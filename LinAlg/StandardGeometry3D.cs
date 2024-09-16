@@ -103,5 +103,118 @@ namespace LinAlg
 
             return intersectionPoint;
         }
+
+        public static bool IsPointInTriangle(double[] point, double[] tri_a, double[] tri_b, double[] tri_c)
+        {
+            Vector<double> p = Vector<double>.Build.Dense(3);
+            Vector<double> a = Vector<double>.Build.Dense(3);
+            Vector<double> b = Vector<double>.Build.Dense(3);
+            Vector<double> c = Vector<double>.Build.Dense(3);
+            p[0] = point[0];
+            p[1] = point[1];
+            p[2] = point[2];            
+            a[0] = tri_a[0];
+            a[1] = tri_a[1];
+            a[2] = tri_a[2];            
+            b[0] = tri_b[0];
+            b[1] = tri_b[1];
+            b[2] = tri_b[2];            
+            c[0] = tri_c[0];
+            c[1] = tri_c[1];
+            c[2] = tri_c[2];
+
+            Vector<double> v0 = c - a;
+            Vector<double> v1 = b - a;
+            Vector<double> v2 = p - a;
+
+            double dot00 = v0.DotProduct(v0);
+            double dot01 = v0.DotProduct(v1);
+            double dot02 = v0.DotProduct(v2);
+            double dot11 = v1.DotProduct(v1);
+            double dot12 = v1.DotProduct(v2);
+
+            // barycentric coords
+            double inv = 1.0 / (dot00 * dot11 - dot01 * dot01);
+            double u = (dot11 * dot02 - dot01 * dot12) * inv;
+            double v = (dot00 * dot12 - dot01 * dot02) * inv;
+
+            // Check if point is in triangle
+            return (u >= 0.0) && (v >= 0.0) && (u + v < 1.0);
+        }
+
+        public static bool LineIntersectsTriangle(double[] line_a, double[] line_b, double[] tri_a, double[] tri_b, double[] tri_c, out double[] intersection)
+        {
+            intersection = new double[3];
+
+            Vector<float> p0 = Vector<float>.Build.Dense(3);
+            Vector<float> p1 = Vector<float>.Build.Dense(3);
+            Vector<float> a = Vector<float>.Build.Dense(3);
+            Vector<float> b = Vector<float>.Build.Dense(3);
+            Vector<float> c = Vector<float>.Build.Dense(3);
+            p0[0] = (float)line_a[0];
+            p0[1] = (float)line_a[1];
+            p0[2] = (float)line_a[2];
+            p1[0] = (float)line_b[0];
+            p1[1] = (float)line_b[1];
+            p1[2] = (float)line_b[2];
+            a[0] = (float)tri_a[0];
+            a[1] = (float)tri_a[1];
+            a[2] = (float)tri_a[2];
+            b[0] = (float)tri_b[0];
+            b[1] = (float)tri_b[1];
+            b[2] = (float)tri_b[2];
+            c[0] = (float)tri_c[0];
+            c[1] = (float)tri_c[1];
+            c[2] = (float)tri_c[2];
+
+            Vector<float> e1 = b - a;
+            Vector<float> e2 = c - a;
+            Vector<float> crossP = Vector<float>.Build.Dense(3);
+            crossP[0] = (p1 - p0)[1] * e2[2] - (p1 - p0)[2] * e2[1];
+            crossP[1] = (p1 - p0)[2] * e2[0] - (p1 - p0)[0] * e2[2];
+            crossP[2] = (p1 - p0)[0] * e2[1] - (p1 - p0)[1] * e2[0];
+
+            float det = e1.DotProduct(crossP);
+
+            // If det is almost zero --> line is in the plane of triangle
+            if (det > -float.Epsilon && det < float.Epsilon)
+                return false;
+
+            float inv = 1.0f / det;
+
+            // Calculate distance from a to line origin
+            Vector<float> s = p0 - a;
+            float u = s.DotProduct(crossP) * inv;
+
+            // inside triangle
+            if (u < 0.0f || u > 1.0f)
+                return false;
+
+            // Prepare to test V parameter
+            Vector<float> cross_q = Vector<float>.Build.Dense(3);
+            cross_q[0] = s[1] * e1[2] - s[2] * e1[1];
+            cross_q[1] = s[2] * e1[0] - s[0] * e1[2];
+            cross_q[2] = s[0] * e1[1] - s[1] * e1[0];
+
+            float v = (p1 - p0).DotProduct(cross_q) * inv;
+
+            // intersection outside of the triangle
+            if (v < 0.0f || u + v > 1.0f)
+                return false;
+
+            // distance p0 to intersection
+            float t = e2.DotProduct(cross_q) * inv;
+
+            // intersection along line segment
+            if (t > float.Epsilon)
+            {
+                intersection[0] = (double)p0[0] + (double)t * (double)(p1[0] - p0[0]);
+                intersection[1] = (double)p0[1] + (double)t * (double)(p1[1] - p0[1]);
+                intersection[2] = (double)p0[2] + (double)t * (double)(p1[2] - p0[2]);
+                return true;
+            }
+
+            return false;
+        }
     }
 }
